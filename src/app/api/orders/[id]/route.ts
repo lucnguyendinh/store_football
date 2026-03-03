@@ -3,10 +3,17 @@ import connectDB from '@/lib/mongodb'
 import Order from '@/models/Order'
 import Product from '@/models/Product'
 import { isAdminAuthenticated } from '@/lib/auth'
-import { OrderStatus } from '@/types'
+import { OrderStatus, Size } from '@/types'
 
 interface RouteParams {
   params: { id: string }
+}
+
+interface ExistingOrderLean {
+  status: OrderStatus
+  productId: string
+  size: Size
+  quantity: number
 }
 
 export async function GET(_req: NextRequest, { params }: RouteParams) {
@@ -40,8 +47,8 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
     }
 
-    const existingOrder = await Order.findById(params.id).lean()
-    if (!existingOrder) {
+    const existingOrder = await Order.findById(params.id).lean<ExistingOrderLean | null>()
+    if (!existingOrder || Array.isArray(existingOrder)) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 })
     }
 
