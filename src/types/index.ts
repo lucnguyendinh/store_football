@@ -14,7 +14,7 @@ export type Team =
 
 export type Size = 'S' | 'M' | 'L' | 'XL' | 'XXL' | 'XXXL'
 
-export type OrderStatus = 'Processing' | 'Confirmed'
+export type OrderStatus = 'Processing' | 'Confirmed' | 'Canceled'
 
 export interface SizeQuantity {
   size: Size
@@ -40,6 +40,7 @@ export interface IOrder {
   customerName: string
   phoneNumber: string
   address: string
+  note?: string
   productId: string | IProduct
   size: Size
   quantity: number

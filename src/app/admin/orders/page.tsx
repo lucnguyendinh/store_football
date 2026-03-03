@@ -13,11 +13,13 @@ interface PopulatedOrder extends Omit<IOrder, 'productId'> {
 const STATUS_LABELS: Record<OrderStatus, string> = {
   Processing: 'Đang xử lý',
   Confirmed: 'Đã xác nhận',
+  Canceled: 'Đã hủy',
 }
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
   Processing: 'bg-yellow-100 text-yellow-700 border-yellow-200',
   Confirmed: 'bg-green-100 text-green-700 border-green-200',
+  Canceled: 'bg-red-100 text-red-700 border-red-200',
 }
 
 const LIMIT = 10
@@ -33,6 +35,7 @@ export default function AdminOrdersPage() {
   const [total, setTotal] = useState(0)
   const [totalProcessing, setTotalProcessing] = useState(0)
   const [totalConfirmed, setTotalConfirmed] = useState(0)
+  const [totalCanceled, setTotalCanceled] = useState(0)
 
   const fetchOrders = async (filter: OrderStatus | '' = statusFilter, p: number = page) => {
     setLoading(true)
@@ -48,6 +51,7 @@ export default function AdminOrdersPage() {
       setTotalPages(data.totalPages ?? 1)
       setTotalProcessing(data.totalProcessing ?? 0)
       setTotalConfirmed(data.totalConfirmed ?? 0)
+      setTotalCanceled(data.totalCanceled ?? 0)
     } finally {
       setLoading(false)
     }
@@ -78,15 +82,18 @@ export default function AdminOrdersPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
       })
-      if (!res.ok) throw new Error('Update failed')
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Update failed')
+      }
       const updated = await res.json()
       setOrders((prev) => prev.map((o) => (o._id === orderId ? updated : o)))
       if (selectedOrder?._id === orderId) setSelectedOrder(updated)
       toast.success('Cập nhật trạng thái thành công')
       // Refresh counts
       fetchOrders(statusFilter, page)
-    } catch {
-      toast.error('Cập nhật thất bại')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Cập nhật thất bại')
     } finally {
       setUpdatingStatus(false)
     }
@@ -98,13 +105,13 @@ export default function AdminOrdersPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Quản lý đơn hàng</h1>
-          <p className="text-gray-500 text-sm mt-0.5">{totalProcessing + totalConfirmed} đơn hàng</p>
+          <p className="text-gray-500 text-sm mt-0.5">{totalProcessing + totalConfirmed + totalCanceled} đơn hàng</p>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
           <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <div className="text-2xl font-bold text-gray-900">{totalProcessing + totalConfirmed}</div>
+            <div className="text-2xl font-bold text-gray-900">{totalProcessing + totalConfirmed + totalCanceled}</div>
             <div className="text-sm text-gray-500">Tổng đơn hàng</div>
           </div>
           <div className="bg-yellow-50 rounded-xl border border-yellow-200 p-4">
@@ -115,11 +122,15 @@ export default function AdminOrdersPage() {
             <div className="text-2xl font-bold text-green-700">{totalConfirmed}</div>
             <div className="text-sm text-green-600">Đã xác nhận</div>
           </div>
+          <div className="bg-red-50 rounded-xl border border-red-200 p-4">
+            <div className="text-2xl font-bold text-red-700">{totalCanceled}</div>
+            <div className="text-sm text-red-600">Đã hủy</div>
+          </div>
         </div>
 
         {/* Filter */}
         <div className="flex gap-2 mb-5">
-          {(['', 'Processing', 'Confirmed'] as const).map((s) => (
+          {(['', 'Processing', 'Confirmed', 'Canceled'] as const).map((s) => (
             <button
               key={s}
               onClick={() => handleStatusFilterChange(s)}
@@ -187,16 +198,28 @@ export default function AdminOrdersPage() {
                         {STATUS_LABELS[order.status]}
                       </span>
                       {order.status === 'Processing' && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleUpdateStatus(order._id, 'Confirmed')
-                          }}
-                          disabled={updatingStatus}
-                          className="text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 px-2.5 py-1 rounded-full transition-colors disabled:opacity-50"
-                        >
-                          Xác nhận
-                        </button>
+                        <>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleUpdateStatus(order._id, 'Confirmed')
+                            }}
+                            disabled={updatingStatus}
+                            className="text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 px-2.5 py-1 rounded-full transition-colors disabled:opacity-50"
+                          >
+                            Xác nhận
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleUpdateStatus(order._id, 'Canceled')
+                            }}
+                            disabled={updatingStatus}
+                            className="text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-2.5 py-1 rounded-full transition-colors disabled:opacity-50"
+                          >
+                            Hủy
+                          </button>
+                        </>
                       )}
                     </div>
                   </div>
@@ -244,6 +267,12 @@ export default function AdminOrdersPage() {
                   <p className="text-gray-500 text-xs mb-0.5">Địa chỉ</p>
                   <p className="font-semibold text-gray-900">{selectedOrder.address}</p>
                 </div>
+                <div className="col-span-2">
+                  <p className="text-gray-500 text-xs mb-0.5">Ghi chú</p>
+                  <p className="font-semibold text-gray-900 whitespace-pre-wrap">
+                    {selectedOrder.note?.trim() ? selectedOrder.note : '-'}
+                  </p>
+                </div>
                 <div>
                   <p className="text-gray-500 text-xs mb-0.5">Sản phẩm</p>
                   <p className="font-semibold text-gray-900">
@@ -283,21 +312,25 @@ export default function AdminOrdersPage() {
               {/* Update status button */}
               <div className="pt-4 border-t border-gray-200">
                 <p className="text-sm font-medium text-gray-700 mb-3">Cập nhật trạng thái:</p>
-                <div className="flex gap-2">
-                  {(['Processing', 'Confirmed'] as OrderStatus[]).map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => handleUpdateStatus(selectedOrder._id, s)}
-                      disabled={updatingStatus || selectedOrder.status === s}
-                      className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium border transition-colors disabled:opacity-50 disabled:cursor-default ${selectedOrder.status === s
-                        ? STATUS_COLORS[s] + ' cursor-default'
-                        : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'
-                        }`}
-                    >
-                      {STATUS_LABELS[s]}
-                    </button>
-                  ))}
-                </div>
+                {selectedOrder.status === 'Processing' ? (
+                  <div className="flex gap-2">
+                    {(['Confirmed', 'Canceled'] as OrderStatus[]).map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => handleUpdateStatus(selectedOrder._id, s)}
+                        disabled={updatingStatus || selectedOrder.status === s}
+                        className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium border transition-colors disabled:opacity-50 disabled:cursor-default ${selectedOrder.status === s
+                          ? STATUS_COLORS[s] + ' cursor-default'
+                          : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'
+                          }`}
+                      >
+                        {STATUS_LABELS[s]}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">Đơn hàng đã hoàn tất xử lý.</p>
+                )}
               </div>
             </div>
           </div>

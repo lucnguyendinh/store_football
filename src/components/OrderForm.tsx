@@ -18,6 +18,7 @@ export default function OrderForm({ product, onClose, onSuccess }: OrderFormProp
     customerName: '',
     phoneNumber: '',
     address: '',
+    note: '',
     size: '' as Size | '',
     quantity: 1,
   })
@@ -45,6 +46,7 @@ export default function OrderForm({ product, onClose, onSuccess }: OrderFormProp
         customerName: form.customerName,
         phoneNumber: form.phoneNumber,
         address: form.address,
+        note: form.note,
         productId: product._id,
         size: form.size as Size,
         quantity: form.quantity,
@@ -117,6 +119,20 @@ export default function OrderForm({ product, onClose, onSuccess }: OrderFormProp
             />
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Ghi chú
+            </label>
+            <textarea
+              value={form.note}
+              onChange={(e) => setForm({ ...form, note: e.target.value })}
+              className="input-field resize-none"
+              rows={4}
+              maxLength={500}
+              placeholder="Thêm tên và số cần in lên áo hoặc bất kì lưu ý nào cho shop khi đi đơn."
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -133,10 +149,10 @@ export default function OrderForm({ product, onClose, onSuccess }: OrderFormProp
                       disabled={!inStock}
                       onClick={() => setForm({ ...form, size })}
                       className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${form.size === size
-                          ? 'bg-blue-600 text-white border-blue-600'
-                          : inStock
-                            ? 'border-gray-300 hover:border-blue-400 text-gray-700'
-                            : 'border-gray-200 text-gray-300 cursor-not-allowed line-through'
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : inStock
+                          ? 'border-gray-300 hover:border-blue-400 text-gray-700'
+                          : 'border-gray-200 text-gray-300 cursor-not-allowed line-through'
                         }`}
                     >
                       {size}

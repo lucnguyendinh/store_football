@@ -8,6 +8,7 @@ const OrderSchema = new Schema<OrderDocument>(
     customerName: { type: String, required: true, trim: true },
     phoneNumber: { type: String, required: true, trim: true },
     address: { type: String, required: true, trim: true },
+    note: { type: String, trim: true, default: '' },
     productId: {
       type: Schema.Types.ObjectId,
       ref: 'Product',
@@ -22,7 +23,7 @@ const OrderSchema = new Schema<OrderDocument>(
     uuid: { type: String, required: true, index: true },
     status: {
       type: String,
-      enum: ['Processing', 'Confirmed'] as OrderStatus[],
+      enum: ['Processing', 'Confirmed', 'Canceled'] as OrderStatus[],
       default: 'Processing',
     },
   },

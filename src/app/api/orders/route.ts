@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
       const limit = parseInt(searchParams.get('limit') || '10')
       const skip = (page - 1) * limit
 
-      const [orders, total, totalProcessing, totalConfirmed] = await Promise.all([
+      const [orders, total, totalProcessing, totalConfirmed, totalCanceled] = await Promise.all([
         Order.find(query)
           .populate('productId', 'name imageUrl price')
           .sort({ quantity: -1, createdAt: -1 })
@@ -40,6 +40,7 @@ export async function GET(req: NextRequest) {
         Order.countDocuments(query),
         Order.countDocuments({ status: 'Processing' }),
         Order.countDocuments({ status: 'Confirmed' }),
+        Order.countDocuments({ status: 'Canceled' }),
       ])
 
       return NextResponse.json({
@@ -49,6 +50,7 @@ export async function GET(req: NextRequest) {
         totalPages: Math.ceil(total / limit),
         totalProcessing,
         totalConfirmed,
+        totalCanceled,
       })
     }
 
