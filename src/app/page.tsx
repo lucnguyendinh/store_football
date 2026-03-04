@@ -55,8 +55,8 @@ function HomeContent() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Hero */}
         <div className="mb-8 text-center">
-          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
-            Quần Áo Bóng Đá Chất Lượng Cao
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
+            Đồ Bóng Đá Like Auth Cao Cấp Nhất - Có Nhận In Tên Số Theo Yêu Cầu
           </h1>
           <p className="text-gray-500 text-base sm:text-lg">
             {totalProducts > 0
