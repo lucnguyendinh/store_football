@@ -5,15 +5,17 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import Header from '@/components/Header'
 import ImageGallery from '@/components/ImageGallery'
-import OrderForm from '@/components/OrderForm'
-import { IProduct, TEAM_LABELS, TYPE_LABELS } from '@/types'
+import { useApp } from '@/context/AppContext'
+import { CUSTOMER_SIZE_OPTIONS, IProduct, Size, TEAM_LABELS, TYPE_LABELS } from '@/types'
+import toast from 'react-hot-toast'
 
 export default function ProductDetailPage() {
+  const { addToCart } = useApp()
   const { id } = useParams<{ id: string }>()
   const [product, setProduct] = useState<IProduct | null>(null)
   const [loading, setLoading] = useState(true)
-  const [showOrderForm, setShowOrderForm] = useState(false)
-  const [orderSuccess, setOrderSuccess] = useState(false)
+  const [selectedSize, setSelectedSize] = useState<Size | ''>('')
+  const [quantity, setQuantity] = useState(1)
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -65,30 +67,39 @@ export default function ProductDetailPage() {
     )
   }
 
-  const totalStock = product.sizes.reduce((sum, s) => sum + s.quantity, 0)
+  const visibleSizes = product.sizes.filter((s) => CUSTOMER_SIZE_OPTIONS.includes(s.size))
+  const totalStock = visibleSizes.reduce((sum, s) => sum + s.quantity, 0)
+  const selectedSizeStock = selectedSize
+    ? visibleSizes.find((s) => s.size === selectedSize)?.quantity ?? 0
+    : 0
 
-  if (orderSuccess) {
-    return (
-      <>
-        <Header />
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
-          <div className="max-w-md mx-auto">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Đặt hàng thành công!</h2>
-            <p className="text-gray-500 mb-6">
-              Đơn hàng của bạn đã được ghi nhận. Chúng tôi sẽ liên hệ sớm nhất có thể.
-            </p>
-            <Link href="/" className="btn-primary inline-block">
-              Tiếp tục mua sắm
-            </Link>
-          </div>
-        </main>
-      </>
-    )
+  const handleSelectSize = (size: Size) => {
+    setSelectedSize(size)
+    setQuantity((prev) => Math.max(1, prev))
+  }
+
+  const handleAddToCart = () => {
+    if (!selectedSize) {
+      toast.error('Vui lòng chọn size trước khi thêm vào giỏ')
+      return
+    }
+
+    if (selectedSizeStock <= 0) {
+      toast.error('Size đã hết hàng')
+      return
+    }
+
+    if (quantity < 1) {
+      toast.error('Số lượng không hợp lệ')
+      return
+    }
+
+    try {
+      addToCart(product, selectedSize, quantity)
+      toast.success('Đã thêm vào giỏ hàng')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Không thể thêm vào giỏ hàng')
+    }
   }
 
   return (
@@ -125,22 +136,47 @@ export default function ProductDetailPage() {
 
             {/* Sizes */}
             <div className="mb-5">
-              <h3 className="font-semibold text-gray-700 mb-2 text-sm">Kho hàng theo size:</h3>
+              <h3 className="font-semibold text-gray-700 mb-2 text-sm">Chọn size:</h3>
               <div className="flex flex-wrap gap-2">
-                {product.sizes.map((s) => (
-                  <div
+                {visibleSizes.map((s) => (
+                  <button
                     key={s.size}
+                    type="button"
+                    disabled={s.quantity <= 0}
+                    onClick={() => handleSelectSize(s.size)}
                     className={`px-3 py-1.5 rounded-lg text-sm font-medium border ${s.quantity > 0
-                        ? 'border-gray-300 text-gray-700 bg-white'
-                        : 'border-gray-200 text-gray-300 line-through'
+                      ? selectedSize === s.size
+                        ? 'border-blue-600 text-blue-700 bg-blue-50'
+                        : 'border-gray-300 text-gray-700 bg-white hover:border-blue-400'
+                      : 'border-gray-200 text-gray-300 line-through'
                       }`}
                   >
                     {s.size}
-                    {s.quantity > 0 && (
-                      <span className="text-xs text-gray-400 ml-1">({s.quantity})</span>
-                    )}
-                  </div>
+                  </button>
                 ))}
+              </div>
+              {visibleSizes.length === 0 && (
+                <p className="text-xs text-gray-500 mt-2">Hiện chưa có size khả dụng.</p>
+              )}
+            </div>
+
+            <div className="mb-5">
+              <h3 className="font-semibold text-gray-700 mb-2 text-sm">Số lượng:</h3>
+              <div className="flex items-center gap-3">
+                <input
+                  type="number"
+                  min={1}
+                  value={quantity}
+                  onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                  className="input-field max-w-28"
+                />
+                {selectedSize ? (
+                  <span className={`text-xs ${selectedSizeStock > 0 ? 'text-green-600' : 'text-red-500'}`}>
+                    {selectedSizeStock > 0 ? 'Còn hàng' : 'Hết hàng'}
+                  </span>
+                ) : (
+                  <span className="text-xs text-gray-400">Chọn size để xem trạng thái hàng</span>
+                )}
               </div>
             </div>
 
@@ -169,30 +205,27 @@ export default function ProductDetailPage() {
             )}
 
             {/* CTA */}
-            <button
-              onClick={() => setShowOrderForm(true)}
-              disabled={totalStock === 0}
-              className={`w-full py-3 px-6 rounded-xl font-bold text-base transition-colors ${totalStock > 0
+            <p className="text-xs text-gray-500 mb-3">
+              Thêm vào giỏ trước để mua nhiều sản phẩm trong một lần đặt hàng.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                onClick={handleAddToCart}
+                disabled={totalStock === 0}
+                className={`py-3 px-6 rounded-xl font-bold text-base transition-colors ${totalStock > 0
                   ? 'bg-blue-600 hover:bg-blue-700 text-white'
                   : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                }`}
-            >
-              {totalStock > 0 ? 'Mua ngay' : 'Hết hàng'}
-            </button>
+                  }`}
+              >
+                {totalStock > 0 ? 'Thêm vào giỏ' : 'Hết hàng'}
+              </button>
+              <Link href="/cart" className="btn-secondary text-center py-3">
+                Xem giỏ hàng
+              </Link>
+            </div>
           </div>
         </div>
       </main>
-
-      {showOrderForm && (
-        <OrderForm
-          product={product}
-          onClose={() => setShowOrderForm(false)}
-          onSuccess={() => {
-            setShowOrderForm(false)
-            setOrderSuccess(true)
-          }}
-        />
-      )}
     </>
   )
 }

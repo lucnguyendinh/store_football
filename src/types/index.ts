@@ -50,6 +50,15 @@ export interface IOrder {
   updatedAt: string
 }
 
+export interface CartItem {
+  productId: string
+  productName: string
+  productImage: string
+  productPrice: number
+  size: Size
+  quantity: number
+}
+
 export interface ProductFilters {
   search?: string
   type?: ProductType | ''
@@ -76,6 +85,10 @@ export const TYPE_LABELS: Record<ProductType, string> = {
 }
 
 export const SIZE_OPTIONS: Size[] = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL']
+
+// Customer-facing sizes (temporarily hides XXXL).
+export const CUSTOMER_SIZE_OPTIONS: Size[] = ['S', 'M', 'L', 'XL', 'XXL']
+
 export const TEAM_OPTIONS: Team[] = [
   'LIVERPOOL', 'MU', 'ARSENAL', 'CHELSEA', 'MAN_CITY',
   'REAL', 'BARCA', 'NATIONAL', 'SALE', 'OTHER',

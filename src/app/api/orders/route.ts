@@ -1,8 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/mongodb'
 import Order from '@/models/Order'
+import Product from '@/models/Product'
 import { isAdminAuthenticated } from '@/lib/auth'
 import { v4 as uuidv4 } from 'uuid'
+import { Size } from '@/types'
+
+interface CreateOrderBody {
+  customerName: string
+  phoneNumber: string
+  address: string
+  note?: string
+  productId: string
+  size: Size
+  quantity: number
+}
 
 export async function GET(req: NextRequest) {
   const isAuth = await isAdminAuthenticated()
@@ -33,7 +45,7 @@ export async function GET(req: NextRequest) {
       const [orders, total, totalProcessing, totalConfirmed, totalCanceled] = await Promise.all([
         Order.find(query)
           .populate('productId', 'name imageUrl price')
-          .sort({ quantity: -1, createdAt: -1 })
+          .sort({ createdAt: -1, _id: -1 })
           .skip(skip)
           .limit(limit)
           .lean(),
@@ -69,7 +81,32 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     await connectDB()
-    const body = await req.json()
+    const body = (await req.json()) as CreateOrderBody
+
+    if (!body.productId || !body.size) {
+      return NextResponse.json({ error: 'Thiếu thông tin sản phẩm hoặc size' }, { status: 400 })
+    }
+
+    if (body.size === 'XXXL') {
+      return NextResponse.json({ error: 'Size XXXL đang tạm ẩn' }, { status: 400 })
+    }
+
+    const hasInStockSize = await Product.exists({
+      _id: body.productId,
+      sizes: {
+        $elemMatch: {
+          size: body.size,
+          quantity: { $gt: 0 },
+        },
+      },
+    })
+
+    if (!hasInStockSize) {
+      return NextResponse.json(
+        { error: 'Size đã hết hàng, vui lòng chọn size khác' },
+        { status: 400 }
+      )
+    }
 
     let uuid = req.cookies.get('user_uuid')?.value
     if (!uuid) {

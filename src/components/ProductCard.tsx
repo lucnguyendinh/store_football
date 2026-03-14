@@ -2,17 +2,24 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { IProduct, SIZE_OPTIONS, TEAM_LABELS, TYPE_LABELS } from '@/types'
+import { CUSTOMER_SIZE_OPTIONS, IProduct, SIZE_OPTIONS, TEAM_LABELS, TYPE_LABELS } from '@/types'
 
 interface ProductCardProps {
   product: IProduct
   href: string
   actions?: React.ReactNode
+  showStockQuantity?: boolean
 }
 
-export default function ProductCard({ product, href, actions }: ProductCardProps) {
+export default function ProductCard({
+  product,
+  href,
+  actions,
+  showStockQuantity = false,
+}: ProductCardProps) {
   const primaryImage = product.imageUrl?.[0] || '/placeholder.jpg'
   const quantityMap = new Map(product.sizes.map((item) => [item.size, item.quantity]))
+  const visibleSizes = showStockQuantity ? SIZE_OPTIONS : CUSTOMER_SIZE_OPTIONS
 
   return (
     <div className="card group cursor-pointer hover:shadow-md transition-shadow duration-200">
@@ -62,7 +69,7 @@ export default function ProductCard({ product, href, actions }: ProductCardProps
           )}
 
           <div className="mt-2 flex flex-wrap gap-1.5">
-            {SIZE_OPTIONS.map((size) => {
+            {visibleSizes.map((size) => {
               const quantity = quantityMap.get(size) ?? 0
               const isOutOfStock = quantity <= 0
 
@@ -70,7 +77,7 @@ export default function ProductCard({ product, href, actions }: ProductCardProps
                 <span
                   key={size}
                   className="relative group/size"
-                  title={`Size ${size}: ${quantity}`}
+                  title={showStockQuantity ? `Size ${size}: ${quantity}` : undefined}
                   aria-disabled={isOutOfStock}
                 >
                   <span
@@ -81,9 +88,11 @@ export default function ProductCard({ product, href, actions }: ProductCardProps
                   >
                     {size}
                   </span>
-                  <span className="absolute left-1/2 -translate-x-1/2 -top-7 whitespace-nowrap rounded bg-gray-900 text-white text-[10px] px-1.5 py-0.5 opacity-0 group-hover/size:opacity-100 transition-opacity pointer-events-none">
-                    {quantity}
-                  </span>
+                  {showStockQuantity && (
+                    <span className="absolute left-1/2 -translate-x-1/2 -top-7 whitespace-nowrap rounded bg-gray-900 text-white text-[10px] px-1.5 py-0.5 opacity-0 group-hover/size:opacity-100 transition-opacity pointer-events-none">
+                      {quantity}
+                    </span>
+                  )}
                 </span>
               )
             })}

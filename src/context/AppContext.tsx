@@ -8,7 +8,18 @@ import React, {
   useEffect,
   ReactNode,
 } from 'react'
-import { IProduct, IOrder, ProductFilters } from '@/types'
+import {
+  CartItem,
+  CUSTOMER_SIZE_OPTIONS,
+  IOrder,
+  IProduct,
+  ProductFilters,
+  Size,
+} from '@/types'
+
+const CART_STORAGE_KEY = 'football_store_cart_v1'
+
+const getCartItemKey = (productId: string, size: Size) => `${productId}_${size}`
 
 interface AppContextType {
   // Products
@@ -26,6 +37,19 @@ interface AppContextType {
   fetchMyOrders: () => Promise<void>
   createOrder: (data: Omit<IOrder, '_id' | 'uuid' | 'status' | 'createdAt' | 'updatedAt'>) => Promise<IOrder>
 
+  // Cart
+  cartItems: CartItem[]
+  cartCount: number
+  cartTotal: number
+  addToCart: (
+    product: IProduct,
+    size: Size,
+    quantity: number
+  ) => { addedQuantity: number; finalQuantity: number }
+  updateCartQuantity: (productId: string, size: Size, quantity: number) => void
+  removeFromCart: (productId: string, size: Size) => void
+  clearCart: () => void
+
   // UUID
   userUuid: string | null
 }
@@ -41,6 +65,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [myOrders, setMyOrders] = useState<IOrder[]>([])
   const [loadingOrders, setLoadingOrders] = useState(false)
   const [userUuid, setUserUuid] = useState<string | null>(null)
+  const [cartItems, setCartItems] = useState<CartItem[]>([])
+  const [cartInitialized, setCartInitialized] = useState(false)
 
   // Read uuid from cookie on mount
   useEffect(() => {
@@ -50,6 +76,54 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ?.split('=')[1]
     if (cookieUuid) setUserUuid(cookieUuid)
   }, [])
+
+  // Restore cart from localStorage on mount.
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(CART_STORAGE_KEY)
+      if (!raw) return
+
+      const parsed = JSON.parse(raw)
+      if (!Array.isArray(parsed)) return
+
+      const restored: CartItem[] = parsed
+        .map((item) => {
+          const maybeItem = item as Partial<CartItem>
+          if (
+            typeof maybeItem?.productId !== 'string' ||
+            typeof maybeItem?.productName !== 'string' ||
+            typeof maybeItem?.productImage !== 'string' ||
+            typeof maybeItem?.productPrice !== 'number' ||
+            typeof maybeItem?.quantity !== 'number' ||
+            typeof maybeItem?.size !== 'string' ||
+            !CUSTOMER_SIZE_OPTIONS.includes(maybeItem.size as Size)
+          ) {
+            return null
+          }
+
+          return {
+            productId: maybeItem.productId,
+            productName: maybeItem.productName,
+            productImage: maybeItem.productImage,
+            productPrice: maybeItem.productPrice,
+            size: maybeItem.size as Size,
+            quantity: Math.max(1, Math.floor(maybeItem.quantity)),
+          }
+        })
+        .filter((item): item is CartItem => item !== null)
+
+      setCartItems(restored)
+    } catch {
+      setCartItems([])
+    } finally {
+      setCartInitialized(true)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!cartInitialized) return
+    window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartItems))
+  }, [cartItems, cartInitialized])
 
   const fetchProducts = useCallback(async (overrideFilters?: ProductFilters, page = 1, limit = 20) => {
     setLoadingProducts(true)
@@ -120,6 +194,103 @@ export function AppProvider({ children }: { children: ReactNode }) {
     []
   )
 
+  const addToCart = useCallback((product: IProduct, size: Size, quantity: number) => {
+    if (size === 'XXXL') {
+      throw new Error('Size XXXL đang tạm ẩn')
+    }
+
+    const sizeStock = product.sizes.find((item) => item.size === size)?.quantity ?? 0
+    if (sizeStock <= 0) {
+      throw new Error('Size đã hết hàng')
+    }
+
+    const normalizedQuantity = Math.max(1, Math.floor(quantity))
+    const itemKey = getCartItemKey(product._id, size)
+    const primaryImage = product.imageUrl[0] || '/placeholder.jpg'
+
+    let result = { addedQuantity: 0, finalQuantity: 0 }
+
+    setCartItems((prev) => {
+      const existingIndex = prev.findIndex(
+        (item) => getCartItemKey(item.productId, item.size) === itemKey
+      )
+
+      if (existingIndex < 0) {
+        const finalQuantity = normalizedQuantity
+        result = {
+          addedQuantity: finalQuantity,
+          finalQuantity,
+        }
+
+        return [
+          ...prev,
+          {
+            productId: product._id,
+            productName: product.name,
+            productImage: primaryImage,
+            productPrice: product.price,
+            size,
+            quantity: finalQuantity,
+          },
+        ]
+      }
+
+      const existing = prev[existingIndex]
+      const finalQuantity = existing.quantity + normalizedQuantity
+      result = {
+        addedQuantity: finalQuantity - existing.quantity,
+        finalQuantity,
+      }
+
+      const next = [...prev]
+      next[existingIndex] = {
+        ...existing,
+        productName: product.name,
+        productImage: primaryImage,
+        productPrice: product.price,
+        quantity: finalQuantity,
+      }
+
+      return next
+    })
+
+    return result
+  }, [])
+
+  const updateCartQuantity = useCallback((productId: string, size: Size, quantity: number) => {
+    const itemKey = getCartItemKey(productId, size)
+    const normalizedQuantity = Math.floor(quantity)
+
+    setCartItems((prev) => {
+      if (normalizedQuantity <= 0) {
+        return prev.filter((item) => getCartItemKey(item.productId, item.size) !== itemKey)
+      }
+
+      return prev.map((item) => {
+        if (getCartItemKey(item.productId, item.size) !== itemKey) {
+          return item
+        }
+
+        return {
+          ...item,
+          quantity: Math.max(1, normalizedQuantity),
+        }
+      })
+    })
+  }, [])
+
+  const removeFromCart = useCallback((productId: string, size: Size) => {
+    const itemKey = getCartItemKey(productId, size)
+    setCartItems((prev) => prev.filter((item) => getCartItemKey(item.productId, item.size) !== itemKey))
+  }, [])
+
+  const clearCart = useCallback(() => {
+    setCartItems([])
+  }, [])
+
+  const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0)
+  const cartTotal = cartItems.reduce((sum, item) => sum + item.productPrice * item.quantity, 0)
+
   return (
     <AppContext.Provider
       value={{
@@ -134,6 +305,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         loadingOrders,
         fetchMyOrders,
         createOrder,
+        cartItems,
+        cartCount,
+        cartTotal,
+        addToCart,
+        updateCartQuantity,
+        removeFromCart,
+        clearCart,
         userUuid,
       }}
     >

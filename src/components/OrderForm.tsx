@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { IProduct, Size, SIZE_OPTIONS } from '@/types'
+import { CUSTOMER_SIZE_OPTIONS, IProduct, Size } from '@/types'
 import { useApp } from '@/context/AppContext'
 import toast from 'react-hot-toast'
 
@@ -23,7 +23,9 @@ export default function OrderForm({ product, onClose, onSuccess }: OrderFormProp
     quantity: 1,
   })
 
-  const availableSizes = product.sizes.filter((s) => s.quantity > 0)
+  const availableSizes = product.sizes.filter(
+    (s) => s.quantity > 0 && CUSTOMER_SIZE_OPTIONS.includes(s.size)
+  )
 
   const selectedSizeStock =
     product.sizes.find((s) => s.size === form.size)?.quantity ?? 0
@@ -35,8 +37,12 @@ export default function OrderForm({ product, onClose, onSuccess }: OrderFormProp
       toast.error('Vui lòng chọn size')
       return
     }
-    if (form.quantity < 1 || form.quantity > selectedSizeStock) {
-      toast.error(`Số lượng không hợp lệ (tối đa ${selectedSizeStock})`)
+    if (selectedSizeStock <= 0) {
+      toast.error('Size đã hết hàng')
+      return
+    }
+    if (form.quantity < 1) {
+      toast.error('Số lượng không hợp lệ')
       return
     }
 
@@ -139,7 +145,7 @@ export default function OrderForm({ product, onClose, onSuccess }: OrderFormProp
                 Size <span className="text-red-500">*</span>
               </label>
               <div className="flex flex-wrap gap-2">
-                {SIZE_OPTIONS.map((size) => {
+                {CUSTOMER_SIZE_OPTIONS.map((size) => {
                   const stockItem = product.sizes.find((s) => s.size === size)
                   const inStock = stockItem && stockItem.quantity > 0
                   return (
@@ -172,13 +178,14 @@ export default function OrderForm({ product, onClose, onSuccess }: OrderFormProp
               <input
                 type="number"
                 min={1}
-                max={selectedSizeStock || 1}
                 value={form.quantity}
                 onChange={(e) => setForm({ ...form, quantity: parseInt(e.target.value) || 1 })}
                 className="input-field"
               />
               {form.size && (
-                <p className="text-xs text-gray-500 mt-1">Còn {selectedSizeStock} sản phẩm</p>
+                <p className={`text-xs mt-1 ${selectedSizeStock > 0 ? 'text-green-600' : 'text-red-500'}`}>
+                  {selectedSizeStock > 0 ? 'Còn hàng' : 'Hết hàng'}
+                </p>
               )}
             </div>
           </div>

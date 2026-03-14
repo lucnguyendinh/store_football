@@ -143,6 +143,7 @@ function AdminContent() {
                   key={product._id}
                   product={product}
                   href={`/admin/product/${product._id}`}
+                  showStockQuantity
                   actions={
                     <>
                       <Link
