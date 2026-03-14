@@ -3,6 +3,20 @@ import connectDB from '@/lib/mongodb'
 import Product from '@/models/Product'
 import { isAdminAuthenticated } from '@/lib/auth'
 
+interface ProductSearchRegex {
+  $regex: string
+  $options: string
+}
+
+interface ProductListQuery {
+  $or?: Array<
+    | { name: ProductSearchRegex }
+    | { tag: ProductSearchRegex }
+  >
+  type?: string
+  team?: string
+}
+
 export async function GET(req: NextRequest) {
   try {
     await connectDB()
@@ -14,8 +28,7 @@ export async function GET(req: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const query: any = {}
+    const query: ProductListQuery = {}
 
     if (search) {
       query.$or = [

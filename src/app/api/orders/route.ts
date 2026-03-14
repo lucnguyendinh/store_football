@@ -16,6 +16,11 @@ interface CreateOrderBody {
   quantity: number
 }
 
+interface OrderListQuery {
+  status?: string
+  uuid?: string
+}
+
 export async function GET(req: NextRequest) {
   const isAuth = await isAdminAuthenticated()
 
@@ -25,8 +30,7 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get('status') || ''
     const uuid = searchParams.get('uuid') || ''
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const query: any = {}
+    const query: OrderListQuery = {}
 
     if (isAuth) {
       if (status) query.status = status
