@@ -16,6 +16,7 @@ import {
   ProductFilters,
   Size,
 } from '@/types'
+import { PURCHASE_ENABLED } from '@/lib/features'
 
 const CART_STORAGE_KEY = 'football_store_cart_v1'
 
@@ -169,6 +170,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const createOrder = useCallback(
     async (data: Omit<IOrder, '_id' | 'uuid' | 'status' | 'createdAt' | 'updatedAt'>) => {
+      if (!PURCHASE_ENABLED) {
+        throw new Error('Tính năng mua hàng đang tạm tắt')
+      }
+
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -195,6 +200,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   )
 
   const addToCart = useCallback((product: IProduct, size: Size, quantity: number) => {
+    if (!PURCHASE_ENABLED) {
+      throw new Error('Tính năng mua hàng đang tạm tắt')
+    }
+
     if (size === 'XXXL') {
       throw new Error('Size XXXL đang tạm ẩn')
     }

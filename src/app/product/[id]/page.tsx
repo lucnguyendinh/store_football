@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation'
 import Header from '@/components/Header'
 import ImageGallery from '@/components/ImageGallery'
 import { useApp } from '@/context/AppContext'
+import { PURCHASE_ENABLED } from '@/lib/features'
 import { CUSTOMER_SIZE_OPTIONS, IProduct, Size, TEAM_LABELS, TYPE_LABELS } from '@/types'
 import toast from 'react-hot-toast'
 
@@ -135,50 +136,59 @@ export default function ProductDetailPage() {
             </div>
 
             {/* Sizes */}
-            <div className="mb-5">
-              <h3 className="font-semibold text-gray-700 mb-2 text-sm">Chọn size:</h3>
-              <div className="flex flex-wrap gap-2">
-                {visibleSizes.map((s) => (
-                  <button
-                    key={s.size}
-                    type="button"
-                    disabled={s.quantity <= 0}
-                    onClick={() => handleSelectSize(s.size)}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium border ${s.quantity > 0
-                      ? selectedSize === s.size
-                        ? 'border-blue-600 text-blue-700 bg-blue-50'
-                        : 'border-gray-300 text-gray-700 bg-white hover:border-blue-400'
-                      : 'border-gray-200 text-gray-300 line-through'
-                      }`}
-                  >
-                    {s.size}
-                  </button>
-                ))}
-              </div>
-              {visibleSizes.length === 0 && (
-                <p className="text-xs text-gray-500 mt-2">Hiện chưa có size khả dụng.</p>
-              )}
-            </div>
+            {PURCHASE_ENABLED ? (
+              <>
+                <div className="mb-5">
+                  <h3 className="font-semibold text-gray-700 mb-2 text-sm">Chọn size:</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {visibleSizes.map((s) => (
+                      <button
+                        key={s.size}
+                        type="button"
+                        disabled={s.quantity <= 0}
+                        onClick={() => handleSelectSize(s.size)}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium border ${s.quantity > 0
+                          ? selectedSize === s.size
+                            ? 'border-blue-600 text-blue-700 bg-blue-50'
+                            : 'border-gray-300 text-gray-700 bg-white hover:border-blue-400'
+                          : 'border-gray-200 text-gray-300 line-through'
+                          }`}
+                      >
+                        {s.size}
+                      </button>
+                    ))}
+                  </div>
+                  {visibleSizes.length === 0 && (
+                    <p className="text-xs text-gray-500 mt-2">Hiện chưa có size khả dụng.</p>
+                  )}
+                </div>
 
-            <div className="mb-5">
-              <h3 className="font-semibold text-gray-700 mb-2 text-sm">Số lượng:</h3>
-              <div className="flex items-center gap-3">
-                <input
-                  type="number"
-                  min={1}
-                  value={quantity}
-                  onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                  className="input-field max-w-28"
-                />
-                {selectedSize ? (
-                  <span className={`text-xs ${selectedSizeStock > 0 ? 'text-green-600' : 'text-red-500'}`}>
-                    {selectedSizeStock > 0 ? 'Còn hàng' : 'Hết hàng'}
-                  </span>
-                ) : (
-                  <span className="text-xs text-gray-400">Chọn size để xem trạng thái hàng</span>
-                )}
-              </div>
-            </div>
+                <div className="mb-5">
+                  <h3 className="font-semibold text-gray-700 mb-2 text-sm">Số lượng:</h3>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      min={1}
+                      value={quantity}
+                      onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                      className="input-field max-w-28"
+                    />
+                    {selectedSize ? (
+                      <span className={`text-xs ${selectedSizeStock > 0 ? 'text-green-600' : 'text-red-500'}`}>
+                        {selectedSizeStock > 0 ? 'Còn hàng' : 'Hết hàng'}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-400">Chọn size để xem trạng thái hàng</span>
+                    )}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <></>
+              // <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              //   Tính năng mua hàng đang tạm tắt.
+              // </div>
+            )}
 
             {/* Tags */}
             {product.tag.length > 0 && (
@@ -205,24 +215,28 @@ export default function ProductDetailPage() {
             )}
 
             {/* CTA */}
-            <p className="text-xs text-gray-500 mb-3">
-              Thêm vào giỏ trước để mua nhiều sản phẩm trong một lần đặt hàng.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <button
-                onClick={handleAddToCart}
-                disabled={totalStock === 0}
-                className={`py-3 px-6 rounded-xl font-bold text-base transition-colors ${totalStock > 0
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  }`}
-              >
-                {totalStock > 0 ? 'Thêm vào giỏ' : 'Hết hàng'}
-              </button>
-              <Link href="/cart" className="btn-secondary text-center py-3">
-                Xem giỏ hàng
-              </Link>
-            </div>
+            {PURCHASE_ENABLED && (
+              <>
+                <p className="text-xs text-gray-500 mb-3">
+                  Thêm vào giỏ trước để mua nhiều sản phẩm trong một lần đặt hàng.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    onClick={handleAddToCart}
+                    disabled={totalStock === 0}
+                    className={`py-3 px-6 rounded-xl font-bold text-base transition-colors ${totalStock > 0
+                      ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                      }`}
+                  >
+                    {totalStock > 0 ? 'Thêm vào giỏ' : 'Hết hàng'}
+                  </button>
+                  <Link href="/cart" className="btn-secondary text-center py-3">
+                    Xem giỏ hàng
+                  </Link>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </main>

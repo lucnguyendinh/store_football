@@ -5,6 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import Header from '@/components/Header'
 import { useApp } from '@/context/AppContext'
+import { PURCHASE_ENABLED } from '@/lib/features'
 import { Size } from '@/types'
 import toast from 'react-hot-toast'
 
@@ -19,6 +20,26 @@ const PHONE_REGEX = /^[0-9]{10,11}$/
 const getCartItemKey = (productId: string, size: Size) => `${productId}_${size}`
 
 export default function CartPage() {
+    if (!PURCHASE_ENABLED) {
+        return (
+            <>
+                <Header />
+                <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
+                    <div className="text-6xl mb-4">🛒</div>
+                    <h1 className="text-2xl font-bold text-gray-900 mb-2">Tính năng mua hàng đang tạm tắt</h1>
+                    <p className="text-gray-500 mb-6">Vui lòng quay lại sau hoặc liên hệ shop để đặt hàng.</p>
+                    <Link href="/" className="btn-primary inline-block">
+                        Về trang chủ
+                    </Link>
+                </main>
+            </>
+        )
+    }
+
+    return <CartPageContent />
+}
+
+function CartPageContent() {
     const {
         cartItems,
         cartCount,

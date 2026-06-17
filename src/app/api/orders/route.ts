@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/mongodb'
+import { PURCHASE_ENABLED } from '@/lib/features'
 import Order from '@/models/Order'
 import Product from '@/models/Product'
 import { isAdminAuthenticated } from '@/lib/auth'
@@ -83,6 +84,10 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  if (!PURCHASE_ENABLED) {
+    return NextResponse.json({ error: 'Tính năng mua hàng đang tạm tắt' }, { status: 403 })
+  }
+
   try {
     await connectDB()
     const body = (await req.json()) as CreateOrderBody
